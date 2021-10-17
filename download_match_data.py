@@ -14,9 +14,10 @@ import urllib
 TOKEN_FILE = 'token.txt'
 ID_TO_CHAR_FILE = 'character_to_id.csv'
 OUT_FILE = 'game_data.csv'
+OUT_FILE_2 = 'event_id_file.txt'
 API_URL = 'https://api.smash.gg/gql/'
 API_VERSION = 'alpha'
-ULTIMATE_ID = 1386 # This is smash.gg's internal representation of smash ultimate
+ULTIMATE_ID = 1386  # This is smash.gg's internal representation of smash ultimate
 
 
 def add_months(sourcedate, months):
@@ -70,6 +71,7 @@ def event_is_ultimate(event: dict) -> bool:
     except KeyError:
         return False
 
+
 def update_start(tournaments):
     """Update the start date for the tournaments query based on the most recent data"""
     # This is fragile, but should only have to work like twice
@@ -108,11 +110,17 @@ def get_ultimate_events(client):
                 },
             '''
 
-
     done_iterating = False
     today = datetime.datetime.now()
+    #Reccomended
     start_date = datetime.datetime(2018, 12, 1)
+
+    #For my use only(Not Reccomended)
+    #start_date = datetime.datetime(2020, 6, 1)
+
     next_date = add_months(start_date, 1)
+
+    append_event = False
 
     while start_date < today:
         print(start_date, next_date)
@@ -122,16 +130,15 @@ def get_ultimate_events(client):
         next_stamp = int(next_date.timestamp())
 
         while True:
-            parameters = {'page': i, 'perPage': 30, 'video_game': ULTIMATE_ID,  'after': start_stamp, 'before': next_stamp}
+            parameters = {'page': i, 'perPage': 30, 'video_game': ULTIMATE_ID,
+                          'after': start_stamp, 'before': next_stamp}
 
             result = call_api(query, parameters, client)
 
             tournaments = result['data']['tournaments']['nodes']
             # Totalpages doesn't work for stopping because it caps at 999 without mentioning it
-            if tournaments is None:
+            if len(tournaments) == 0:
                 break
-
-            print(i)
 
             for tournament in tournaments:
                 events = tournament['events']
@@ -146,7 +153,11 @@ def get_ultimate_events(client):
                         continue
                     if not event['state'] == 'COMPLETED':
                         continue
-                    event_ids.add(event['id'])
+                    if(event['id'] == 605026):
+                        append_event = True
+                    if(append_event):
+                        print(event['id'])
+                        event_ids.add(event['id'])
             i += 1
 
         start_date = next_date
@@ -196,7 +207,8 @@ def parse_selection(selection, id_to_char):
     if character_id in id_to_char:
         character_name = id_to_char[character_id]
     else:
-        sys.stderr.write('Character with id {} is not in the file\n'.format(character_id))
+        sys.stderr.write(
+            'Character with id {} is not in the file\n'.format(character_id))
 
     return entrant_id, character_name, entrant_name
 
@@ -224,10 +236,12 @@ def update_game_data(games: dict, id_to_char: dict, game_data: dict) -> dict:
             if selection['selectionType'] != 'CHARACTER':
                 continue
             if first_selection:
-                entrant1, char1, entrant1_name = parse_selection(game_selections[0], id_to_char)
+                entrant1, char1, entrant1_name = parse_selection(
+                    game_selections[0], id_to_char)
                 first_selection = False
             else:
-                entrant2, char2, entrant2_name = parse_selection(game_selections[1], id_to_char)
+                entrant2, char2, entrant2_name = parse_selection(
+                    game_selections[1], id_to_char)
 
         if entrant1 == winner or entrant2 == winner:
             if entrant1 == winner:
@@ -243,7 +257,6 @@ def update_game_data(games: dict, id_to_char: dict, game_data: dict) -> dict:
         else:
             if char1 is not None and char2 is not None:
                 sys.stderr.write('Data from only one player\n')
-
 
     return game_data
 
@@ -310,7 +323,9 @@ def get_sets_for_events(event_ids: list) -> dict:
                  'winner': [],
                  'entrant1': [],
                  'entrant2': [],
-                }
+                 }
+    
+    counter = 50000
 
     for event_id in event_ids:
         i = 1
@@ -349,6 +364,12 @@ def get_sets_for_events(event_ids: list) -> dict:
                 id_to_char = parse_id_to_char_file(ID_TO_CHAR_FILE)
 
                 game_data = update_game_data(games, id_to_char, game_data)
+                
+                if(event_id > counter):
+                    print(event_id)
+                    data_df = pd.DataFrame.from_dict(game_data)
+                    data_df.to_csv(OUT_FILE)
+                    counter += 1000;
 
             i += 1
             if is_doubles:
@@ -373,6 +394,8 @@ if __name__ == '__main__':
 
     sys.stderr.write('Finding all smash ultimate events\n')
     event_ids = get_ultimate_events(client)
+    print(event_ids)
+    
     sys.stderr.write('Parsing event data\n')
     game_data = get_sets_for_events(event_ids)
 
