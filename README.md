@@ -7,3 +7,7 @@ The dependencies can be found in the environment.yml file and installed with `co
 If you do not already have conda installed you can find it [here](https://docs.conda.io/en/latest/miniconda.html).
 
 The dataset can also be downloaded [here](https://drive.google.com/file/d/1A4Ik03h5CrmnevD-VGZ0qtBJT6NjyXOc/view?usp=sharing) to avoid having to wait on the script.
+
+EDIT
+
+The updated dataset as of August 2021 can be downloaded along with all character's stage benifit [here](https://drive.google.com/drive/folders/1Te47zQdXvq02Nk_6uaB8F8tkxRRfotjd?usp=sharing).
